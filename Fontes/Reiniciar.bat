@@ -1,0 +1,1 @@
+Reindex.exe instancia!usuario!Senha!SIM|SIM|SIM|

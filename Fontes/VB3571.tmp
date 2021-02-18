@@ -1,0 +1,126 @@
+VERSION 5.00
+Begin VB.Form frmPrincipal 
+   BackColor       =   &H00FFFFFF&
+   Caption         =   "Reindexar dados"
+   ClientHeight    =   3060
+   ClientLeft      =   120
+   ClientTop       =   465
+   ClientWidth     =   8715
+   ControlBox      =   0   'False
+   KeyPreview      =   -1  'True
+   LinkTopic       =   "Form1"
+   MaxButton       =   0   'False
+   MinButton       =   0   'False
+   ScaleHeight     =   3060
+   ScaleWidth      =   8715
+   StartUpPosition =   2  'CenterScreen
+   Begin VB.Timer Timer1 
+      Interval        =   1000
+      Left            =   6780
+      Top             =   1920
+   End
+   Begin VB.Label lblinfo 
+      Alignment       =   1  'Right Justify
+      BackStyle       =   0  'Transparent
+      Caption         =   "Aguardando conexão com o banco de dados...."
+      BeginProperty Font 
+         Name            =   "Trebuchet MS"
+         Size            =   8.25
+         Charset         =   0
+         Weight          =   400
+         Underline       =   0   'False
+         Italic          =   0   'False
+         Strikethrough   =   0   'False
+      EndProperty
+      ForeColor       =   &H00FF0000&
+      Height          =   1035
+      Left            =   150
+      TabIndex        =   0
+      Top             =   60
+      Width           =   8535
+   End
+   Begin VB.Image Image1 
+      Height          =   3075
+      Left            =   -2160
+      Picture         =   "Form1.frx":0000
+      Top             =   -30
+      Width           =   8850
+   End
+End
+Attribute VB_Name = "frmPrincipal"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Dim Cn As Object
+Dim Instancia As String
+Private Sub Label1_Click()
+
+End Sub
+Public Function Logs(valor As String)
+    Open App.Path & "\" & Instancia & ".txt" For Append As #1
+    Print #1, , valor
+    Close #1
+End Function
+Private Sub InicioProcesso()
+    Timer1.Enabled = False
+    
+    Dim valor() As String
+    If (Command = "") Then
+        MsgBox "Paramentros incorretos!", vbCritical, "Atenção"
+        End
+    End If
+    valor = Split(Command, "!")
+    
+    Dim stringCn As String
+    stringCn = "Provider=SQLOLEDB.1;Password=%3;Persist Security Info=True;User ID=%2;Initial Catalog=master;Data Source=%1"
+    stringCn = Replace(stringCn, "%1", valor(0))
+    stringCn = Replace(stringCn, "%2", valor(1))
+    stringCn = Replace(stringCn, "%3", valor(2))
+    
+    Instancia = Replace(valor(0), "\", "")
+
+    lblinfo.Caption = "Aguardando conexão com o banco de dados [" & valor(0) & "]"
+    DoEvents
+    Set Cn = CreateObject("Adodb.Connection")
+    Cn.open stringCn
+    
+    Dim RsDataBases As Object
+    Dim RsTable As Object
+    
+    Set RsDataBases = Cn.Execute("select name From sysdatabases where left(name, 2)='ng'")
+    Do While Not RsDataBases.EOF
+        Set RsTable = Cn.Execute("select name From " & RsDataBases.fields("name") & ".dbo.sysobjects where xtype = 'U'")
+        Do While Not RsTable.EOF
+            lblinfo.Caption = "Reindexando tabela " & valor(0) & " --> " & RsDataBases.fields("name") & "." & RsTable.fields("name").Value
+            DoEvents
+            Call retRecordSet("dbcc dbreindex('" & RsDataBases.fields("name") & ".dbo." & RsTable.fields("name").Value & "')")
+            RsTable.MoveNext
+            DoEvents
+        Loop
+        RsDataBases.MoveNext
+        DoEvents
+    Loop
+    
+    End
+End Sub
+
+
+Public Function retRecordSet(StrSQL)
+    Dim cmd ' as new ADODB.Command
+    Dim rs 'As New ADODB.Recordset
+    
+    Set cmd = CreateObject("ADODB.Command")
+    Set rs = CreateObject("ADODB.Recordset")
+    
+    cmd.ActiveConnection = Cn
+    cmd.CommandText = StrSQL
+    cmd.CommandTimeout = 0
+    Set rs = cmd.Execute
+    
+    Set retRecordSet = rs
+End Function
+
+Private Sub Timer1_Timer()
+    Call InicioProcesso
+End Sub

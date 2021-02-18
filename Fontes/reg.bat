@@ -1,0 +1,2 @@
+regsvr32 AUNZIP32.DLL
+regsvr32 AZIP32.DLL
